@@ -1,0 +1,81 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df = pd.read_csv(r"C:\Users\Kishore\Downloads\COVID-19_Cases_and_Deaths_by_Age_Group_-_ARCHIVE.csv")
+df.columns = df.columns.str.strip()
+
+# 1. Bar Chart: Cases and Deaths by Age Group
+age_data = df.groupby("AgeGroups")[["Total cases", "Total deaths"]].sum().reset_index()
+
+x = np.arange(len(age_data["AgeGroups"]))
+width = 0.35
+
+plt.figure(figsize=(10, 6))
+plt.bar(x, age_data["Total cases"], width=width, color="skyblue", label="Total Cases")
+plt.bar(x + width, age_data["Total deaths"], width=width, color="tomato", label="Total Deaths")
+plt.xticks(x + width / 2, age_data["AgeGroups"], rotation=45)
+plt.ylabel("Count")
+plt.title("COVID-19 Cases and Deaths by Age Group")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# 2. Line Chart: Cases and Deaths Over Time
+df["DateUpdated"] = pd.to_datetime(df["DateUpdated"])
+time_data = df.groupby("DateUpdated")[["Total cases", "Total deaths"]].sum().reset_index()
+
+plt.figure(figsize=(10, 6))
+plt.plot(time_data["DateUpdated"], time_data["Total cases"], label="Total Cases", color="blue", marker="o")
+plt.plot(time_data["DateUpdated"], time_data["Total deaths"], label="Total Deaths", color="red", marker="x")
+plt.xlabel("Date")
+plt.ylabel("Count")
+plt.title("COVID-19 Cases and Deaths Over Time")
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 3. Scatter Plot: Latest Snapshot (Cases vs Deaths)
+latest_date = df["DateUpdated"].max()
+latest_df = df[df["DateUpdated"] == latest_date]
+
+plt.figure(figsize=(8, 6))
+sns.scatterplot(data=latest_df, x="Total cases", y="Total deaths", hue="AgeGroups", palette="Set2", s=100)
+plt.title(f"Cases vs Deaths by Age Group on {latest_date.date()}")
+plt.xlabel("Total Cases")
+plt.ylabel("Total Deaths")
+plt.legend(title="Age Group", bbox_to_anchor=(1.05, 1), loc="upper left")
+plt.tight_layout()
+plt.show()
+
+# 4. Heatmap: Mortality Rate Over Recent Weeks
+df = df[df["Total deaths"] != 'Suppressed']
+df["Total deaths"] = pd.to_numeric(df["Total deaths"], errors="coerce")
+df["Total cases"] = pd.to_numeric(df["Total cases"], errors="coerce")
+df = df.dropna(subset=["Total cases"])
+df["Mortality Rate (%)"] = (df["Total deaths"] / df["Total cases"]) * 100
+
+recent_dates = sorted(df["DateUpdated"].unique())[-8:]
+df_recent = df[df["DateUpdated"].isin(recent_dates)]
+
+pivot_table = df_recent.pivot_table(index='AgeGroups', columns='DateUpdated', values='Mortality Rate (%)')
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(pivot_table, cmap='Reds', linewidths=0.5, linecolor='gray', annot=True, fmt=".1f")
+plt.title("COVID-19 Mortality Rate (%) by Age Group (Recent 8 Weeks)")
+plt.xlabel("Date")
+plt.ylabel("Age Group")
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# 5. Pie Chart: Death Distribution by Age Group
+pie_data = df.groupby("AgeGroups")["Total deaths"].sum()
+
+plt.figure(figsize=(8, 8))
+plt.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors)
+plt.title("Distribution of Total COVID-19 Deaths by Age Group")
+plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+plt.show()
